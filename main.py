@@ -336,6 +336,17 @@ CRITICAL RULES:
             logging.error(f"Response text: {response.text[:200]}")
         return None  # ✅ डमी क्विज़ हटाया
 
+# --- BOT ROUTINES & HANDLERS ---
+async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.clear()
+    await update.message.reply_text(
+        ">🤖 AI Auto-Quiz Configuration Wizard\n\n"
+        ">📝 Step 1: Send me the Topic or Subject for the quiz.\n"
+        ">(Example: Ancient History, Morden History, Hindi, Geography...)",
+        parse_mode="Markdown"
+    )
+    return TOPIC
+
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['topic'] = update.message.text
     reply_keyboard = [['10', '20', '50', '70']]
