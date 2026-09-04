@@ -337,13 +337,14 @@ CRITICAL RULES:
         return None  # ✅ डमी क्विज़ हटाया
 
 # --- BOT ROUTINES & HANDLERS ---
+# --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text(
-        ">🤖 AI Auto-Quiz Configuration Wizard\n\n"
-        ">📝 Step 1: Send me the Topic or Subject for the quiz.\n"
-        ">(Example: Ancient History, Morden History, Hindi, Geography...)",
-        parse_mode="Markdown"
+        "<blockquote>🤖 AI Auto-Quiz Configuration Wizard</blockquote>\n\n"
+        "<blockquote>📝 Step 1: Send me the Topic or Subject for the quiz.</blockquote>\n"
+        "(Example: Ancient History, Morden History, Hindi, Geography...)",
+        parse_mode="HTML"
     )
     return TOPIC
 
@@ -351,9 +352,9 @@ async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data['topic'] = update.message.text
     reply_keyboard = [['10', '20', '50', '70']]
     await update.message.reply_text(
-        f"✅ Topic Saved: *{context.user_data['topic']}*\n\n"
+        f"✅ Topic Saved: <b>{context.user_data['topic']}</b>\n\n"
         "🔢 Step 2: How many questions do you want?",
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return Q_COUNT
@@ -361,25 +362,32 @@ async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['q_count'] = int(update.message.text)
     await update.message.reply_text(
-        f"✅ Questions Count: *{context.user_data['q_count']}*\n\n"
+        f"✅ Questions Count: <b>{context.user_data['q_count']}</b>\n\n"
         "📝 Step 3: Send me the Title of your quiz.",
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove()
     )
     return TITLE
 
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['title'] = update.message.text
+    
+    # Description को स्किप करने के लिए बटन
+    reply_keyboard = [['Skip ⏭️']]
     await update.message.reply_text(
         "✅ Title Saved!\n\n"
         "📝 Step 4: Send a Description for this quiz.\n"
-        "(Or type `/skip` to leave it blank)"
+        "👉 Ya niche diye gaye <b>Skip ⏭️</b> button par click kare.",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return DESCRIPTION
 
 async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text
-    context.user_data['description'] = "None" if text == "/skip" else text
+    # बटन क्लिक होने पर या /skip लिखने पर "None" सेव होगा
+    context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
+    
     reply_keyboard = [['English', 'Hindi', 'Hinglish']]
     await update.message.reply_text(
         "🌐 Step 5 — Language\nChoose quiz output layout language:",
@@ -426,18 +434,17 @@ async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYP
 async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['time_limit'] = int(update.message.text.split()[0])
     
-    # ✅ AI QUESTIONS GENERATE करो
+    # AI QUESTIONS GENERATE करो
     topic = context.user_data.get('topic', 'General Knowledge')
     count = context.user_data.get('q_count', 5)
     lang = context.user_data.get('language', 'English')
     difficulty = context.user_data.get('difficulty', 'Medium')
     options_cnt = context.user_data.get('options_count', 4)
     
-    # Generating message dikha
     generating_msg = await update.message.reply_text(
-        "🤖 *AI Quiz Generate Kar Raha Hai...*\n\n"
+        "🤖 <b>AI Quiz Generate Kar Raha Hai...</b>\n\n"
         "⏳ Please wait, 10-15 seconds...",
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove()
     )
     
@@ -445,30 +452,27 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         # AI se questions generate karo
         ai_questions = generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt)
         
-        # ⚡ बदलाव: अगर AI क्विज़ जनरेट नहीं हुआ (None या खाली लिस्ट मिली), तो वॉर्मिंग मैसेज देकर प्रोसेस कैंसिल करें
+        # AI क्विज़ फेल होने पर वॉर्निंग मैसेज और प्रोसेस कैंसिल (HTML-safe text)
         if not ai_questions or len(ai_questions) == 0:
-            await generating_msg.delete()  # पुराना लोडिंग मैसेज डिलीट करें
-            
+            await generating_msg.delete()
             await update.message.reply_text(
                 "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare"
             )
-            context.user_data.clear()  # पुराना अधूरा डेटा साफ़ करें ताकि नई शुरुआत हो सके
-            return ConversationHandler.END  # कन्वर्सेशन को यहीं ख़त्म/कैंसिल करें
+            context.user_data.clear()
+            return ConversationHandler.END
         
-        # ✅ FORMAT QUESTIONS PROPERLY
+        # FORMAT QUESTIONS PROPERLY
         formatted_questions = []
         for q in ai_questions:
             correct_idx = q.get("correct", 0)
             options = q.get("options", [])
             
-            # 🟢 FIXED: Validate और store index (not text)
             if not isinstance(correct_idx, int):
                 try:
                     correct_idx = int(correct_idx)
                 except (ValueError, TypeError):
                     correct_idx = 0
             
-            # Ensure index is valid
             if correct_idx < 0 or correct_idx >= len(options):
                 correct_idx = 0
                 logging.warning(f"Invalid correct_idx {q.get('correct')}, using 0")
@@ -476,12 +480,11 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             formatted_questions.append({
                 "text": q.get("question", ""),
                 "options": options,
-                "correct": correct_idx,  # 🟢 INTEGER INDEX
+                "correct": correct_idx,
                 "explanation": q.get("explanation", ""),
                 "pre_message": ""
             })
         
-        # ✅ CONTEXT MEIN STORE KARO
         context.user_data["ai_questions"] = formatted_questions
         context.user_data["quiz_build"] = {
             "title": context.user_data.get("title", "AI Quiz"),
@@ -493,7 +496,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         await generating_msg.delete()
         
-        # ✅ NEGATIVE MARKING BUTTONS DIKHA
+        # NEGATIVE MARKING BUTTONS DIKHA
         neg_keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"),
@@ -509,10 +512,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ])
         
         await update.message.reply_text(
-            "🛑 **Select Negative Marking Schema:**\n\n"
+            "🛑 <b>Select Negative Marking Schema:</b>\n\n"
             "Aap is quiz ke liye kitni negative marking set karna chahte hain?",
             reply_markup=neg_keyboard,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         return NEGATIVE
         
@@ -520,11 +523,11 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         logging.error(f"Error in handle_time_limit: {e}")
         try:
             await generating_msg.delete()
-        except Exception:
+        except:
             pass
-        # ⚡ बदलाव: एक्सेप्शन/क्रैश होने की स्थिति में भी वही वॉर्निंग देकर कैंसिल करें
+        # क्रैश होने पर भी वॉर्निंग मैसेज और कैंसिल लॉजिक
         await update.message.reply_text(
-            "aapka quiz genrate karne me error aa gaya tha, esliye cancel ho gaya aap fir se quiz generate kare"
+            "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare"
         )
         context.user_data.clear()
         return ConversationHandler.END
