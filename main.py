@@ -354,107 +354,184 @@ CRITICAL RULES:
 
 # --- BOT ROUTINES & HANDLERS ---
 # --- BOT ROUTINES & HANDLERS ---
+# 💡 सुरक्षा के लिए हेल्पर फ़ंक्शन (चेक करता है कि क्या ग्रुप में ओनर ही बटन दबा रहा है)
+def is_authorized(update: Update):
+    user_id = update.message.from_user.id
+    chat_type = update.message.chat.type
+    
+    try:
+        env_owner_id = int(os.environ.get("OWNER_ID", 0))
+    except (ValueError, TypeError):
+        env_owner_id = 0
+        
+    # अगर ग्रुप है और चलाने वाला ओनर नहीं है, तो रिजेक्ट करें
+    if chat_type in ["group", "supergroup"] and user_id != env_owner_id:
+        return False
+    return True
+
+# --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    chat_type = update.message.chat.type
+    
+    try:
+        env_owner_id = int(os.environ.get("OWNER_ID", 0))
+        env_group_id = int(os.environ.get("SUPPORT_GROUP_ID", 0))
+    except (ValueError, TypeError):
+        env_owner_id = env_group_id = 0
+    
+    # ग्रुप सुरक्षा जाँच
+    if chat_type in ["group", "supergroup"]:
+        if chat_id != env_group_id:
+            await update.message.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
+            return ConversationHandler.END
+            
+        if user_id != env_owner_id:
+            await update.message.reply_text("❌ <b>Sorry!</b> Group me yah command keval <b>Bot Owner</b> hi use kar sakte hain.", parse_mode="HTML")
+            return ConversationHandler.END
+
     context.user_data.clear()
     
-    # ✅ क्विक सिलेक्शन के लिए रिप्लाई कीबोर्ड बटन सेट किया गया
+    # ✅ Selective Keyboard 1: Topic Selection
     reply_keyboard = [['Current Affairs 2026 📰']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
     await update.message.reply_text(
-        "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
+        "<blockquote>🤖 <b>welcome to ai quiz genrator bot</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "👉 Niche diye gaye button par click kare or apna koi bhi topic type karke bheje.\n"
+        "or Niche diye gaye button par click kare ya apna koi bhi topic type karke bheje.\n"
         "<i>(Example: Ancient History, Modern History, Hindi, Geography...)</i>",
         parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        reply_markup=markup
     )
     return TOPIC
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return TOPIC
+    
     context.user_data['topic'] = update.message.text
+    
+    # ✅ Selective Keyboard 2: Question Count
     reply_keyboard = [['10', '20', '50', '70']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
         f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
-        "<blockquote>🔢 Step 2: How many questions do you want?</blockquote>",
+        "<blockquote>🔢 <b>Step 2:</b> How many questions do you want?</blockquote>",
         parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        reply_markup=markup
     )
     return Q_COUNT
 
 async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return Q_COUNT
+    
     context.user_data['q_count'] = int(update.message.text)
     await update.message.reply_text(
         f"<blockquote>✅ Questions Count: <b>{context.user_data['q_count']}</b></blockquote>\n\n"
-        "<blockquote>📝 Step 3: Send me the Title of your quiz.</blockquote>",
+        "<blockquote>📝 <b>Step 3:</b> Send me the Title of your quiz.</blockquote>",
         parse_mode="HTML",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=ReplyKeyboardRemove(selective=True)
     )
     return TITLE
 
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return TITLE
+    
     context.user_data['title'] = update.message.text
     
-    # Description को स्किप करने के लिए बटन
+    # ✅ Selective Keyboard 3: Skip Description Button
     reply_keyboard = [['Skip ⏭️']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>✅ Title Saved!</blockquote>\n\n"
-        "<blockquote>📝 Step 4: Send a Description for this quiz.</blockquote>\n"
-        "👉 or niche diye gaye <b>Skip ⏭️</b> button par click kare.",
+        "✅ Title Saved!\n\n"
+        "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
+        "<blockquote>or niche diye gaye <b>Skip ⏭️</b> button par click kare.</blockquote>",
         parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        reply_markup=markup
     )
     return DESCRIPTION
 
 async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return DESCRIPTION
+    
     text = update.message.text
-    # बटन क्लिक होने पर या /skip लिखने पर "None" सेव होगा
     context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
     
+    # ✅ Selective Keyboard 4: Language Choice
     reply_keyboard = [['English', 'Hindi']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>🌐 Step 5 — Language\nChoose quiz output layout language:</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        "<blockquote>🌐 <b>Step 5 — Language</b>\nChoose quiz output layout language:</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
     return LANGUAGE
 
 async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return LANGUAGE
+    
     context.user_data['language'] = update.message.text
+    
+    # ✅ Selective Keyboard 5: Explanation Choice
     reply_keyboard = [['With Explanation', 'No Explanation']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>✨ Step 6 — Explanation\nDo you want explanations?</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        "<blockquote>✨ <b>Step 6 — Explanation</b>\nDo you want explanations?</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
     return EXPLANATION
 
 async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return EXPLANATION
+    
     context.user_data['explanation'] = update.message.text
+    
+    # ✅ Selective Keyboard 6: Difficulty Choice
     reply_keyboard = [['Easy', 'Medium', 'Hard']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>⚡ Step 7 — Difficulty\nChoose calculation difficulty:</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        "<blockquote>⚡ <b>Step 7 — Difficulty</b>\nChoose calculation difficulty:</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
     return DIFFICULTY
 
 async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return DIFFICULTY
+    
     context.user_data['difficulty'] = update.message.text
+    
+    # ✅ Selective Keyboard 7: Option Count Choice
     reply_keyboard = [['2 Options', '4 Options']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>🔥 Step 8 — Option Count\nHow many choices per card?</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        "<blockquote>🔥 <b>Step 8 — Option Count</b>\nHow many choices per card?</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
     return OPTIONS_COUNT
 
 async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return OPTIONS_COUNT
+    
     context.user_data['options_count'] = int(update.message.text.split()[0])
+    
+    # ✅ Selective Keyboard 8: Time Limit Choice
     reply_keyboard = [['10 sec', '15 sec', '30 sec']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
     await update.message.reply_text(
-        "<blockquote>⏱ Step 9 — Time Limit\nSet ticker duration:</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        "<blockquote>⏱ <b>Step 9 — Time Limit</b>\nSet ticker duration:</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
     return TIME_LIMIT
 
