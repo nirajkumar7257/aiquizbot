@@ -795,7 +795,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
                     f"<blockquote>📉 Negative Marking: `-{db_neg_val} Marks` per wrong answer</blockquote>\n\n"
                     "🏁 Click 'I am ready!' to start the quiz.\n"
-                    "🏁 The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
+                    "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
                 # 🌟 FIX: Raw dictionary payload use kiya button ko Green colour dene ke liye
