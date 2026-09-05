@@ -361,7 +361,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     reply_keyboard = [['Current Affairs 2026 📰']]
     
     await update.message.reply_text(
-        "<blockquote>🤖 <b>🤖 Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
+        "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
         "👉 Niche diye gaye button par click kare or apna koi bhi topic type karke bheje.\n"
         "<i>(Example: Ancient History, Modern History, Hindi, Geography...)</i>",
@@ -788,14 +788,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 init_text = (
-                    f"🎲 *Get ready for the quiz!*\n\n"
-                    f"📚 *Title:* {escape_markdown(title)}\n"
-                    f"🔥 *Description:* {escape_markdown(desc) if desc else 'No description'}\n"
-                    f"🖊️ *Questions:* {total_q}\n"
-                    f"⏱ *Time per question:* {time_disp}\n"
-                    f"📉 *Negative Marking:* `-{db_neg_val} Marks` per wrong answer\n\n"
-                    "🏁 *Click 'I am ready!' to start the quiz.*\n"
-                    "🏁 *The quiz will begin when at least 2 people are ready to play. Send /stop to stop it.*"
+                    f"<blockquote>🎲 Get ready for the quiz!</blockquote>\n\n"
+                    f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
+                    f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
+                    f"<blockquote>🖊️ Questions: {total_q}</blockquote>\n"
+                    f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
+                    f"<blockquote>📉 Negative Marking: `-{db_neg_val} Marks` per wrong answer</blockquote>\n\n"
+                    "🏁 Click 'I am ready!' to start the quiz.\n"
+                    "🏁 The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
                 # 🌟 FIX: Raw dictionary payload use kiya button ko Green colour dene ke liye
@@ -809,7 +809,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 quiz_panel_msg = await update.message.reply_text(
                     init_text, 
                     reply_markup=InlineKeyboardMarkup(kb), 
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
                 
                 if not is_private:
@@ -828,15 +828,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Welcome message text layout
         welcome_text = (
-            "👋 *Welcome to Premium Quiz Bot!*\n\n"
-            "*Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.*\n\n"
-            "💡 *Check Available Commands:*\n"
-            "➤ /help *– Open help center*\n\n"
-            "👥 *Add the bot to a group and start quizzes*\n"
-            "🤖 **Welcome to AI Auto-Quiz Generator Bot!**\n\n"
-            "⚡ Commands Layout:\n"
+            "<blockquote>👋 Welcome to Premium Quiz Bot!</blockquote>\n\n"
+            "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
+            "💡 Check Available Commands:\n"
+            "➤ /help – Open help center\n\n"
+            "👥 Add the bot to a group and start quizzes\n"
+            "🤖 Welcome to AI Auto-Quiz Generator Bot!\n\n"
+            "<blockquote>⚡ Commands Layout:</blockquote>\n"
             "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
-            f"📢 *Owner Details:* ID `{OWNER_ID}`"
+            f"📢 Owner Details: ID `{OWNER_ID}`"
         )
         
         # 🌟 FIX: Welcome panel ke buttons ko bhi custom color diya (Blue aur Green)
@@ -855,7 +855,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         welcome_msg = await update.message.reply_text(
             welcome_text, 
             reply_markup=InlineKeyboardMarkup(kb), 
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         
         if not is_private:
