@@ -3526,13 +3526,13 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
             db_neg_val = negative_value if negative_value is not None else 0.0
 
             init_text = (
-                f"🎮 *LIVE QUIZ STARTED SOON*\n\n"
-                f"📚 *Title:* {escape_markdown(title)}\n"
-                f"🔥 *Description:* {escape_markdown(desc) if desc else 'No description'}\n"
-                f"⏱ *Time per question:* {time_disp}\n"
-                f"📉 *Negative Marking:* `-{db_neg_val} Marks` per wrong answer\n\n"
-                "🏁 *This quiz will start automatically shortly.*\n"
-                "🏁 *Use /stop in the group to stop it once started.*"
+                f"<blockquote>🎮 <b>LIVE QUIZ STARTED SOON</b></blockquote>\n\n"
+                f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
+                f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
+                f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
+                f"<blockquote>📉 Negative Marking: -{db_neg_val} Marks per wrong answer</blockquote>\n\n"
+                "🏁 This quiz will start automatically shortly.\n"
+                "Use /stop in the group to stop it once started."
             )
 
             # 🇮🇳 IST time use करो (UTC नहीं)
@@ -3601,7 +3601,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     sent = await app.bot.send_message(
                         chat_id=SUPPORT_GROUP_ID,
                         text=init_text,
-                        parse_mode="Markdown"
+                        parse_mode="HTML"
                     )
                     
                     # best-effort pin
