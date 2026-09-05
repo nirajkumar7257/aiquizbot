@@ -897,9 +897,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         pass
 
         help_text = (
-            "Help Menu\n\n"
+            "<blockquote>Help Menu</blockquote>\n\n"
             "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
-            "💡 Available Commands:\n"
+            "<blockquote>💡 Available Commands:</blockquote>\n"
             "➤ /newquiz – Create a new quiz\n"
             "➤ /quizzes – View your quizzes\n"
             "➤ /start – Start the bot | quiz\n"
@@ -931,7 +931,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             
         # Help message send karke use variable me liya
-        help_msg = await update.message.reply_text(help_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        help_msg = await update.message.reply_text(help_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
         
         # Agar ye group hai, toh help message ki ID save karein taaki agli baar ye delete ho sake
         if not is_private:
@@ -1290,10 +1290,10 @@ async def handle_timer_text(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ])
         
         await msg_target.reply_text(
-            "🛑 **Select Negative Marking Schema:**\n\n"
+            "<blockquote>💌 Select Negative Marking Schema:</blockquote>\n\n"
             "Aap is quiz ke liye kitni negative marking set karna chahte hain? Niche diye gaye buttons se choose karein:",
             reply_markup=neg_keyboard,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         return NEGATIVE 
     except Exception as e:
@@ -2608,7 +2608,7 @@ async def send_next_group_poll(chat_id, context):
                 logging.error(f"Failed to send fallback message text: {e}")
             
             # 2. पोल के लिए डेटा छोटा करें
-            poll_question = f"❓ प्रश्न [{game['current_q'] + 1}/{len(questions)}] का सही उत्तर चुनें:"
+            poll_question = f"प्रश्न [{game['current_q'] + 1}/{len(questions)}] का सही उत्तर चुनें:"
             poll_options = [f"Option {i+1}" for i in range(len(options))]
 
         # Send poll with retry
@@ -2845,8 +2845,8 @@ async def compile_group_leaderboard(chat_id, context):
         # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
-        header = f"🏁 The quiz '*{escape_markdown(quiz_title)}*' has finished!\n"
-        header += f"📉 *Negative Marking Applied: -{db_neg_multiplier} per wrong answer*\n\n"
+        header = f"<blockquote>🏁 The quiz '{escape_markdown(quiz_title)}' has finished!</blockquote>\n"
+        header += f"📉 Negative Marking Applied: -{db_neg_multiplier} per wrong answer\n\n"
         
         subheader = f"📋 {total_questions_answered} questions answered\n"
         subheader += f"👥 Total Participants: {len(final_scores)}\n"
@@ -2920,12 +2920,12 @@ async def compile_group_leaderboard(chat_id, context):
             rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
             
             # Clean layout print without invalid characters or slashes
-            leaderboard += f"{rank_icon} *{clean_username}*\n"
+            leaderboard += f"{rank_icon} {clean_username}\n"
             leaderboard += f"   ➻ Right: `{score}`\n"
             leaderboard += f"   ➻ Wrong: `{wrong_count}`\n"
-            leaderboard += f"   ➻ Final Score: `{points:.2f} Marks`\n"
+            leaderboard += f"   ➻ <blockquote>Final Score: `{points:.2f} Marks`</blockquote>\n"
             leaderboard += f"   ➻ Total Time Taken: `{total_time}`\n"
-            leaderboard += f"   ➻ *{roast_msg}*\n"
+            leaderboard += f"   ➻ {roast_msg}\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
         footer = "\n🏆 Congratulations to all participants!"
@@ -2948,7 +2948,7 @@ async def compile_group_leaderboard(chat_id, context):
             chat_id=chat_id, 
             text=full_message, 
             reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         GROUP_GAMES.pop(chat_id, None)
     except Exception as e:
@@ -3013,12 +3013,12 @@ async def handle_back_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         
         welcome_text = (
-            "👋 *Welcome to Premium Quiz Bot!*\n\n"
-            "*Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.*\n\n"
-            "💡 *Check Available Commands:*\n"
-            "➤ /help *– Open help center*\n\n"
-            "👥 *Add the bot to a group and start quizzes*\n"
-            f"📢 *Owner Details:* ID `{OWNER_ID}`"
+            "<blockquote>👋 Welcome to Premium Quiz Bot!</blockquote>\n\n"
+            "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
+            "<blockquote>💡 Check Available Commands:</blockquote>\n"
+            "➤ /help – Open help center\n\n"
+            "👥 Add the bot to a group and start quizzes\n"
+            f"📢 Owner Details: ID `{OWNER_ID}`"
         )
         
         # 🌟 FIX: Raw dictionary payload use kiya buttons ko custom color dene ke liye (Bypassing validation)
@@ -3031,7 +3031,7 @@ async def handle_back_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             text=welcome_text, 
             reply_markup=InlineKeyboardMarkup(kb), 
-            parse_mode="Markdown",
+            parse_mode="HTML",
             api_kwargs={
                 "read_timeout": 20,
                 "write_timeout": 20
