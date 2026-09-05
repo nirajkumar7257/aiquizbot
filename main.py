@@ -2845,11 +2845,11 @@ async def compile_group_leaderboard(chat_id, context):
         # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
-        header = f"🏁 The quiz '{escape_markdown(quiz_title)}' has finished!\n"
-        header += f"📉 Negative Marking Applied: -{db_neg_multiplier} per wrong answer\n\n"
+        header = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
+        header += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
         
-        subheader = f"📋 {total_questions_answered} questions answered\n"
-        subheader += f"👥 Total Participants: {len(final_scores)}\n"
+        subheader = f"📋 <b>{total_questions_answered} questions answered</b>\n"
+        subheader += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
         subheader += f"━━━━━━━━━━━━━━━━━\n\n"
         
         # 🎭 डायलॉग्स पूल (बिना किसी फिक्स नाम के - रैंडमली इस्तेमाल के लिए)
@@ -2920,12 +2920,12 @@ async def compile_group_leaderboard(chat_id, context):
             rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
             
             # Clean layout print without invalid characters or slashes
-            leaderboard += f"{rank_icon} {clean_username}\n"
-            leaderboard += f"   ➻ Right: {score}\n"
-            leaderboard += f"   ➻ Wrong: {wrong_count}\n"
-            leaderboard += f"   <blockquote>Final Score: {points:.2f} Points</blockquote>\n"
-            leaderboard += f"   ➻ Total Time Taken: {total_time}\n"
-            leaderboard += f"   <blockquote>{roast_msg}</blockquote>\n"
+            leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
+            leaderboard += f"   ➻ <b>Right:</b> {score}\n"
+            leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
+            leaderboard += f"   ➻ <b>Total Time Taken:</b> {total_time}\n"
+            leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b></blockquote>\n"
+            leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
         footer = "\n🏆 Congratulations to all participants!"
