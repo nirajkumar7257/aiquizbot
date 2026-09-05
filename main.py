@@ -410,7 +410,7 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # बटन क्लिक होने पर या /skip लिखने पर "None" सेव होगा
     context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
     
-    reply_keyboard = [['English', 'Hindi', 'Hinglish']]
+    reply_keyboard = [['English', 'Hindi']]
     await update.message.reply_text(
         "🌐 Step 5 — Language\nChoose quiz output layout language:",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
