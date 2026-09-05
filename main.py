@@ -2845,7 +2845,7 @@ async def compile_group_leaderboard(chat_id, context):
         # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
-        header = f"<blockquote>🏁 The quiz '{escape_markdown(quiz_title)}' has finished!</blockquote>\n"
+        header = f"🏁 The quiz '{escape_markdown(quiz_title)}' has finished!\n"
         header += f"📉 Negative Marking Applied: -{db_neg_multiplier} per wrong answer\n\n"
         
         subheader = f"📋 {total_questions_answered} questions answered\n"
@@ -2921,11 +2921,11 @@ async def compile_group_leaderboard(chat_id, context):
             
             # Clean layout print without invalid characters or slashes
             leaderboard += f"{rank_icon} {clean_username}\n"
-            leaderboard += f"   ➻ Right: `{score}`\n"
-            leaderboard += f"   ➻ Wrong: `{wrong_count}`\n"
-            leaderboard += f"   ➻ <blockquote>Final Score: `{points:.2f} Marks`</blockquote>\n"
-            leaderboard += f"   ➻ Total Time Taken: `{total_time}`\n"
-            leaderboard += f"   ➻ {roast_msg}\n"
+            leaderboard += f"   ➻ Right: {score}\n"
+            leaderboard += f"   ➻ Wrong: {wrong_count}\n"
+            leaderboard += f"   <blockquote>Final Score: {points:.2f} Points</blockquote>\n"
+            leaderboard += f"   ➻ Total Time Taken: {total_time}\n"
+            leaderboard += f"   <blockquote>{roast_msg}</blockquote>\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
         footer = "\n🏆 Congratulations to all participants!"
