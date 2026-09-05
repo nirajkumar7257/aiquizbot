@@ -236,17 +236,20 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # --- CONVERSATION STATES ---
 (TOPIC, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
  EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
-    
+
 # AI Question Generator helper
-# Line 207 के पास - generate_bulk_questions_ai function को update करें
+# Line 207 के पास - generate_bulk_questions_ai function को इससे रिप्लेस करें
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
     if not ai_client:
         logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning None")
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
-        return None  # ✅ डमी क्विज़ हटाया, अब सीधे None जाएगा
+        return None
     
-    # ✅ FIXED: Randomized correct answer positions
+    # OPTIMIZED PROMPT: करंट अफेयर्स और लेटेस्ट 2026 डेटा के लिए
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
+
+CRITICAL CONTEXT FOR CURRENT AFFAIRS:
+If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current year 2026. Ensure all facts are updated, highly accurate, and non-speculative.
 
 Topic: {topic}
 Language: {lang}
@@ -255,7 +258,12 @@ Options per question: {options_cnt}
 
 Return ONLY valid JSON array (no markdown, no extra text):
 [
-  {{"question": "What is..?", "options": ["A", "B", "C", "D"], "correct": 2, "explanation": "Short explanation here"}}
+  {{
+    "question": "What is..?", 
+    "options": ["A", "B", "C", "D"], 
+    "correct": 2, 
+    "explanation": "Short explanation here"
+  }}
 ]
 
 CRITICAL RULES:
@@ -266,7 +274,7 @@ CRITICAL RULES:
 5. Each question must have correct answer at DIFFERENT random position
 6. Example: Q1 correct=1, Q2 correct=3, Q3 correct=0, Q4 correct=2 (varied!)
 7. All options must be DIFFERENT and meaningful
-8. Questions must relate to {topic}
+8. Questions must strictly relate to {topic}
 9. NO sample/dummy questions
 10. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
 11. Return ONLY JSON array"""
@@ -284,9 +292,14 @@ CRITICAL RULES:
         # Clean markdown
         clean_text = clean_text.replace("```json", "").replace("```", "").strip()
         
+        # Advanced Regex cleaning to extract only JSON array if extra text is present
+        match = re.search(r'\[.*\]', clean_text, re.DOTALL)
+        if match:
+            clean_text = match.group(0)
+            
         questions = json.loads(clean_text)
         
-        # ✅ Validation
+        # ✅ Validation Loop
         valid_questions = []
         for idx, q in enumerate(questions):
             try:
@@ -296,7 +309,7 @@ CRITICAL RULES:
                 
                 correct_idx = q.get("correct", 0)
                 
-                # 🟢 CRITICAL: Ensure correct is INTEGER and valid
+                # Ensure correct is INTEGER and valid
                 if not isinstance(correct_idx, int):
                     try:
                         correct_idx = int(correct_idx)
@@ -309,42 +322,51 @@ CRITICAL RULES:
                     correct_idx = 0
                 
                 q["correct"] = correct_idx
-                valid_questions.append(q)
                 
-                # 🟢 LOG: Track correct answer position
+                # Explanation fallback handling
+                if "explanation" not in q or not q["explanation"]:
+                    q["explanation"] = f"The correct answer is option {correct_idx + 1}."
+                    
+                valid_questions.append(q)
                 logging.info(f"✅ Q{len(valid_questions)}: '{q['question'][:40]}...' | Correct at index {correct_idx}")
                 
             except Exception as q_err:
                 logging.warning(f"Question parse error: {q_err}")
                 continue
         
-        # ✅ डमी क्विज़ भरने के बजाय सीधे None भेजें ताकि प्रोसेस कैंसिल हो सके
-        if len(valid_questions) < count:
-            logging.warning(f"⚠️ Only {len(valid_questions)}/{count} questions received. Cancelling.")
-            return None
+        # ✅ NEW LOGIC: अगर मांगे गए काउंट से कम मिले पर न्यूनतम 10 (या मांगे गए काउंट से कम पर कम से कम 10) सवाल मिल गए हैं तो पास करें
+        min_required = min(10, count) # अगर यूज़र ने खुद ही 5 या 10 से कम माँगे हों तो उसके लिए सेफ-गार्ड
         
-        logging.info(f"✅ Generated {len(valid_questions)} total questions")
-        return valid_questions[:count]
+        if len(valid_questions) >= min_required:
+            logging.info(f"✅ Minimum threshold met. Proceeding with {len(valid_questions)} questions.")
+            return valid_questions[:count]
+        else:
+            # 10 से कम होने पर ही कैंसिल होगा
+            logging.warning(f"⚠️ Only {len(valid_questions)} questions received. Less than minimum {min_required}. Cancelling.")
+            return None
         
     except json.JSONDecodeError as je:
         logging.error(f"❌ JSON Parse Error: {je}")
-        logging.error(f"Response was: {clean_text[:200]}")
-        return None  # ✅ डमी क्विज़ हटाया
+        return None
     except Exception as e:
         logging.error(f"❌ AI Generation Error: {e}", exc_info=True)
-        if 'response' in locals():
-            logging.error(f"Response text: {response.text[:200]}")
-        return None  # ✅ डमी क्विज़ हटाया
+        return None
 
 # --- BOT ROUTINES & HANDLERS ---
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
+    
+    # ✅ क्विक सिलेक्शन के लिए रिप्लाई कीबोर्ड बटन सेट किया गया
+    reply_keyboard = [['Current Affairs 2026 📰']]
+    
     await update.message.reply_text(
-        "<blockquote>🤖 AI Auto-Quiz Configuration Wizard</blockquote>\n\n"
-        "<blockquote>📝 Step 1: Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "(Example: Ancient History, Morden History, Hindi, Geography...)",
-        parse_mode="HTML"
+        "<blockquote>🤖 <b>AI Auto-Quiz Configuration Wizard</b></blockquote>\n\n"
+        "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
+        "👉 Niche diye gaye button par click kare ya apna koi bhi topic type karke bheje.\n"
+        "<i>(Example: Ancient History, Modern History, Hindi, Geography...)</i>",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return TOPIC
 
@@ -452,7 +474,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         # AI se questions generate karo
         ai_questions = generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt)
         
-        # AI क्विज़ फेल होने पर वॉर्निंग मैसेज और प्रोसेस कैंसिल (HTML-safe text)
+        # अगर 10 से कम सवाल मिले तो प्रोसेस कैंसिल
         if not ai_questions or len(ai_questions) == 0:
             await generating_msg.delete()
             await update.message.reply_text(
@@ -485,6 +507,12 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "pre_message": ""
             })
         
+        # ✅ यहाँ चेक करें कि क्या माँगे गए सवाल से कम सवाल मिले हैं
+        actual_count = len(formatted_questions)
+        alert_text = ""
+        if actual_count < count:
+            alert_text = f"\n\n⚠️ <b>नोट:</b> आपने {count} सवाल माँगे थे, लेकिन AI ने कुल <b>{actual_count}</b> सवाल ही जनरेट किए हैं।"
+        
         context.user_data["ai_questions"] = formatted_questions
         context.user_data["quiz_build"] = {
             "title": context.user_data.get("title", "AI Quiz"),
@@ -511,8 +539,9 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             ]
         ])
         
+        # ✅ अलर्ट टेक्स्ट को यहाँ मैसेज में जोड़ दिया गया है
         await update.message.reply_text(
-            "🛑 <b>Select Negative Marking Schema:</b>\n\n"
+            f"🛑 <b>Select Negative Marking Schema:</b>{alert_text}\n\n"
             "Aap is quiz ke liye kitni negative marking set karna chahte hain?",
             reply_markup=neg_keyboard,
             parse_mode="HTML"
@@ -525,7 +554,6 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await generating_msg.delete()
         except:
             pass
-        # क्रैश होने पर भी वॉर्निंग मैसेज और कैंसिल लॉजिक
         await update.message.reply_text(
             "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare"
         )
