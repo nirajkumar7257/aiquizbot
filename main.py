@@ -418,7 +418,6 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "<blockquote>or skip button par click kare ya apna koi bhi topic type karke bheje.</blockquote>\n"
         "(Example: Ancient History, Modern History, Hindi, Geography...)",
         parse_mode="HTML",
         reply_markup=markup
@@ -466,7 +465,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.message.reply_text(
         "✅ Title Saved!\n\n"
         "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
-        "<blockquote>or niche diye gaye <b>Skip ⏭️</b> button par click kare.</blockquote>",
+        "<blockquote>or niche diye gaye <b>skip ⏭️</b> button par click kare.</blockquote>",
         parse_mode="HTML",
         reply_markup=markup
     )
@@ -527,7 +526,7 @@ async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data['difficulty'] = update.message.text
     
     # ✅ Selective Keyboard 7: Option Count Choice
-    reply_keyboard = [['2 Options', '4 Options']]
+    reply_keyboard = [['2 Options', '3 Options', '4 Options']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
     await update.message.reply_text(
