@@ -390,28 +390,6 @@ CRITICAL RULES:
         return None
 
 # --- BOT ROUTINES & HANDLERS ---
-# --- BOT ROUTINES & HANDLERS ---
-# 💡 सुरक्षा के लिए हेल्पर फ़ंक्शन (जो लिस्ट में मौजूद सभी अलाउड यूज़र्स को ग्रुप में अनुमति देगा)
-def is_authorized(update: Update):
-    user_id = update.message.from_user.id
-    chat_type = update.message.chat.type
-    
-    try:
-        env_owner_id = int(os.environ.get("OWNER_ID", 0))
-    except (ValueError, TypeError):
-        env_owner_id = 0
-
-    # ✅ .env से कॉमा से अलग की गई आईडी की स्ट्रिंग को लिस्ट में बदलना
-    allowed_ids_str = os.environ.get("ALLOWED_USER_IDS", "")
-    allowed_ids = [int(x.strip()) for x in allowed_ids_str.split(",") if x.strip().isdigit()]
-        
-    # अगर ग्रुप है और चलाने वाला ओनर या अलाउड लिस्ट में से कोई नहीं है, तो रिजेक्ट करें
-    if chat_type in ["group", "supergroup"]:
-        if user_id != env_owner_id and user_id not in allowed_ids:
-            return False
-    return True
-
-# --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
