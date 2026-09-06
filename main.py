@@ -30,19 +30,56 @@ logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # 🇮🇳 India Standard Time (IST) Timezone
 IST = timezone(timedelta(hours=5, minutes=30))
 
+# ... आपके कोड की शुरुआती इम्पोर्ट लाइन्स और load_dotenv() ऊपर रहेगा ...
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
-
 
 # 🔥 FIXED: .env se SUPPORT_GROUP_ID load karne ke liye ye line jodi hai
 SUPPORT_GROUP_ID = int(os.getenv("SUPPORT_GROUP_ID")) if os.getenv("SUPPORT_GROUP_ID") else None
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# ====================================================================
+# 🔒 NEW: ALLOWED USERS PARSING & SECURITY LOGIC
+# ====================================================================
+def get_allowed_ids():
+    """Load and safely clean ALLOWED_USER_IDS from .env string to a list of integers"""
+    raw_str = os.environ.get("ALLOWED_USER_IDS", "")
+    # कोट्स या अनचाहे स्पेस को साफ़ करें
+    clean_str = raw_str.replace('"', '').replace("'", "").strip()
+    if not clean_str:
+        return []
+    
+    allowed_list = []
+    for x in clean_str.split(","):
+        x_clean = x.strip()
+        if x_clean.isdigit():
+            allowed_list.append(int(x_clean))
+        elif x_clean.startswith("-") and x_clean[1:].isdigit(): # नेगेटिव आईडी सपोर्ट
+            allowed_list.append(int(x_clean))
+            
+    return allowed_list
+
+def is_authorized(update: Update):
+    """Check if the user is either the Owner or present in Allowed Users list"""
+    user_id = update.message.from_user.id
+    chat_type = update.message.chat.type
+    
+    allowed_ids = get_allowed_ids()
+    
+    # अगर ग्रुप चैट है, तो ही सुरक्षा प्रतिबंध लागू होंगे
+    if chat_type in ["group", "supergroup"]:
+        if user_id != OWNER_ID and user_id not in allowed_ids:
+            return False
+    return True
+# ====================================================================
+
 # Initialize Gemini Client if Key exists
 ai_client = None
 if GEMINI_API_KEY:
     ai_client = genai.Client(api_key=GEMINI_API_KEY)
+
+# ... इसके नीचे आपका बाकी का पुराना कोड चलता रहेगा (DB_FILE = "quiz_bot.db" आदि) ...
 
 DB_FILE = "quiz_bot.db"
 
