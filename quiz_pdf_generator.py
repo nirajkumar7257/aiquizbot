@@ -1,5 +1,5 @@
 """
-🎯 Quiz PDF Report Generator - STABLE TERMUX HINDI & EMOJI FIX (PART 1 OF 4)
+🎯 Quiz PDF Report Generator - HINDI TEXT DISPLAY FIX
 """
 
 import json
@@ -23,26 +23,23 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 
 class QuizPDFGenerator:
-    """Generate comprehensive PDF reports for quiz results with full Termux Hindi/Emoji stability"""
+    """Generate comprehensive PDF reports for quiz results with Hindi text support"""
     
     def __init__(self, db_file: str = "quiz_bot.db"):
         self.db_file = db_file
         self.logger = logging.getLogger(__name__)
         self._register_fonts()
 
-      # 🎯 PART 2 OF 4: Font setup aur database fetching logic (Class ke andar jodhein)
-
     def _register_fonts(self):
         """
-        Download and safely register a solid Devanagari TrueType font
-        without breaking on Android/Termux file streams.
+        Download and register Devanagari fonts for Hindi support
         """
         try:
             font_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
             hindi_font_path = os.path.join(font_dir, "NotoSansDevanagari-Regular.ttf")
             hindi_bold_path = os.path.join(font_dir, "NotoSansDevanagari-Bold.ttf")
             
-            # ✅ FIXED: सही GitHub raw content links for NotoSans Devanagari fonts
+            # Download fonts if not present
             if not os.path.exists(hindi_font_path):
                 self.logger.info("⏬ Downloading NotoSansDevanagari-Regular Font...")
                 try:
@@ -50,6 +47,7 @@ class QuizPDFGenerator:
                         "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansdevanagari/NotoSansDevanagari-Regular.ttf", 
                         hindi_font_path
                     )
+                    self.logger.info("✅ Regular font downloaded successfully")
                 except Exception as e:
                     self.logger.warning(f"Regular font download failed: {e}")
                     
@@ -60,42 +58,46 @@ class QuizPDFGenerator:
                         "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansdevanagari/NotoSansDevanagari-Bold.ttf", 
                         hindi_bold_path
                     )
+                    self.logger.info("✅ Bold font downloaded successfully")
                 except Exception as e:
                     self.logger.warning(f"Bold font download failed: {e}")
 
-            # Register standard TTF files inside ReportLab core
+            # Register fonts
+            font_registered = False
             if os.path.exists(hindi_font_path):
-                pdfmetrics.registerFont(TTFont('HindiFont', hindi_font_path))
-                self.default_font = 'HindiFont'
-                self.logger.info("✅ Regular Devanagari font registered")
-            else:
-                self.default_font = 'Helvetica'
-                self.logger.warning("⚠️ Regular font not available, using Helvetica fallback")
-                
-            if os.path.exists(hindi_bold_path):
-                pdfmetrics.registerFont(TTFont('HindiFont-Bold', hindi_bold_path))
-                self.default_font_bold = 'HindiFont-Bold'
-                self.logger.info("✅ Bold Devanagari font registered")
-            else:
-                self.default_font_bold = 'Helvetica-Bold'
-                self.logger.warning("⚠️ Bold font not available, using Helvetica fallback")
+                try:
+                    pdfmetrics.registerFont(TTFont('HindiFont', hindi_font_path))
+                    self.default_font = 'HindiFont'
+                    self.logger.info("✅ HindiFont registered")
+                    font_registered = True
+                except Exception as e:
+                    self.logger.warning(f"Failed to register HindiFont: {e}")
             
-            # 🔥 GLOBAL OVERRIDE: Purane built-in styles ko target font se map karein
-            styles = getSampleStyleSheet()
-            styles['Normal'].fontName = self.default_font
-            styles['BodyText'].fontName = self.default_font
-            styles['Heading1'].fontName = self.default_font_bold
-            styles['Heading2'].fontName = self.default_font_bold
-            styles['Heading3'].fontName = self.default_font_bold
-            self.logger.info("✅ Core styles patched with Devanagari engine")
+            if not font_registered:
+                self.default_font = 'Helvetica'
+                self.logger.warning("⚠️ Using Helvetica fallback")
+                
+            bold_font_registered = False
+            if os.path.exists(hindi_bold_path):
+                try:
+                    pdfmetrics.registerFont(TTFont('HindiFont-Bold', hindi_bold_path))
+                    self.default_font_bold = 'HindiFont-Bold'
+                    self.logger.info("✅ HindiFont-Bold registered")
+                    bold_font_registered = True
+                except Exception as e:
+                    self.logger.warning(f"Failed to register HindiFont-Bold: {e}")
+            
+            if not bold_font_registered:
+                self.default_font_bold = 'Helvetica-Bold'
+                self.logger.warning("⚠️ Using Helvetica-Bold fallback")
                 
         except Exception as e:
-            self.logger.warning(f"Font registration error, activating Helvetica fallback: {e}")
+            self.logger.error(f"Font registration error: {e}")
             self.default_font = 'Helvetica'
             self.default_font_bold = 'Helvetica-Bold'
             
     def _fetch_quiz_data(self, quiz_id: int) -> Tuple[str, str, int]:
-        """Fetch quiz metadata from database safely"""
+        """Fetch quiz metadata from database"""
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -113,12 +115,10 @@ class QuizPDFGenerator:
             self.logger.error(f"Error fetching quiz data: {e}")
             return "Unknown Quiz", "Error", 0
 
-          # 🎯 PART 3 OF 4: Main builder, header aur leaderboard flow (Class ke andar jodhein)
-
     def generate_quiz_report_pdf(
         self, chat_id: int, quiz_id: int, game_data: Dict, final_scores: Dict, negative_value: float = 0.0
     ) -> Optional[BytesIO]:
-        """Generate a comprehensive, crash-free PDF report of the quiz results"""
+        """Generate a comprehensive PDF report of the quiz results"""
         try:
             pdf_buffer = BytesIO()
             quiz_title, quiz_desc, total_questions = self._fetch_quiz_data(quiz_id)
@@ -146,7 +146,7 @@ class QuizPDFGenerator:
             return None
 
     def _build_header(self, quiz_title: str, quiz_desc: str, total_q: int) -> List:
-        """Build PDF header safely mapped with Hindi variables"""
+        """Build PDF header"""
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'CustomTitle', parent=styles['Heading1'], fontSize=20,
@@ -157,8 +157,9 @@ class QuizPDFGenerator:
             textColor=colors.HexColor('#555555'), spaceAfter=8, alignment=TA_LEFT, fontName=self.default_font
         )
         
-        title = Paragraph(f"<b>{self._sanitize_text(quiz_title)}</b>", title_style)
-        description = Paragraph(f"<b>Description:</b> {self._sanitize_text(quiz_desc)}", desc_style)
+        # NO sanitization - let Hindi text pass as-is
+        title = Paragraph(f"<b>{quiz_title}</b>", title_style)
+        description = Paragraph(f"<b>Description:</b> {quiz_desc}", desc_style)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         metadata = Paragraph(f"<b>Total Questions:</b> {total_q} | <b>Generated:</b> {now}", desc_style)
         
@@ -170,7 +171,7 @@ class QuizPDFGenerator:
         return [title, Spacer(1, 0.1*inch), description, metadata, Spacer(1, 0.1*inch), divider]
     
     def _build_leaderboard(self, game_data: Dict, final_scores: Dict, negative_value: float) -> List:
-        """Render leaderboard arrays without dropping un-mapped font tokens"""
+        """Render leaderboard"""
         styles = getSampleStyleSheet()
         leaderboard_title = ParagraphStyle(
             'LeaderboardTitle', parent=styles['Heading2'], fontSize=15,
@@ -188,11 +189,11 @@ class QuizPDFGenerator:
         
         for rank, (uid, meta) in enumerate(sorted_scores, 1):
             player_name = game_data.get("joined_users", {}).get(str(uid), game_data.get("joined_users", {}).get(int(uid), f"User {uid}"))
-            player_name = self._sanitize_text(player_name)
+            # NO sanitization for player names
             
             leaderboard_data.append([
                 Paragraph(f"{rank}.", normal_text), 
-                Paragraph(player_name[:25], normal_text),
+                Paragraph(str(player_name)[:25], normal_text),
                 Paragraph(str(meta["score"]), normal_text), 
                 Paragraph(str(meta["wrong"]), normal_text),
                 Paragraph(f"{meta['total_time']:.1f}", normal_text), 
@@ -212,11 +213,8 @@ class QuizPDFGenerator:
         ]))
         return [Paragraph("<b>Leaderboard</b>", leaderboard_title), Spacer(1, 0.1*inch), leaderboard_table]
 
-
-    # 🎯 PART 4 OF 4: Questions, helper encoder methods aur integration function
-
     def _fetch_all_questions(self, quiz_id: int) -> List[Dict]:
-        """Fetch all questions safely with options metrics"""
+        """Fetch all questions from database"""
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -241,11 +239,11 @@ class QuizPDFGenerator:
                 })
             return questions
         except Exception as e:
-            self.logger.error(f"Error matching question data matrix: {e}")
+            self.logger.error(f"Error fetching questions: {e}")
             return []
 
     def _build_questions_section(self, questions_data: List[Dict], game_data: Dict, final_scores: Dict) -> List:
-        """Render questions without shifting fonts dynamically"""
+        """Render questions section"""
         styles = getSampleStyleSheet()
         story = []
         question_title = ParagraphStyle(
@@ -256,22 +254,23 @@ class QuizPDFGenerator:
         )
         
         for q_data in questions_data:
-            q_text = self._sanitize_text(q_data["text"])  
+            # NO sanitization - direct Hindi text
+            q_text = q_data["text"]
             story.append(Paragraph(f"<b>Q{q_data['number']}. {q_text}</b>", question_title))
             
             options_data = []
             for opt_idx, opt_text in enumerate(q_data["options"]):
                 is_correct = (opt_idx == q_data["correct_idx"])
-                mark = "[✓ Correct]" if is_correct else "[Option]"
+                mark = "✓" if is_correct else "○"
                 color = '#22c55e' if is_correct else '#666666'
                 
-                clean_opt = self._sanitize_text(opt_text)
+                # NO sanitization - direct Hindi text for options
                 options_data.append([
                     Paragraph(mark, normal_text), 
-                    Paragraph(f"<font color='{color}'>{clean_opt}</font>", normal_text)
+                    Paragraph(f"<font color='{color}'>{opt_text}</font>", normal_text)
                 ])
             
-            options_table = Table(options_data, colWidths=[1.0*inch, 6.0*inch])
+            options_table = Table(options_data, colWidths=[0.5*inch, 6.5*inch])
             options_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'), ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
@@ -279,64 +278,21 @@ class QuizPDFGenerator:
             story.append(options_table)
             story.append(Spacer(1, 0.05*inch))
             
-            clean_exp = self._sanitize_text(q_data["explanation"])
-            story.append(Paragraph(f"<b>Explanation:</b> {clean_exp}", normal_text))
+            # NO sanitization - direct Hindi text for explanation
+            exp_text = q_data["explanation"]
+            story.append(Paragraph(f"<b>Explanation:</b> {exp_text}", normal_text))
             story.append(Spacer(1, 0.15*inch))
         return story
     
-    def _sanitize_text(self, text: str) -> str:
-        """
-        🔥 ADVANCED SAFE ENCODER: Emojis ko standard symbols me convert 
-        karta hai aur Hindi ke standard parameters ko safe rakhta hai.
-        
-        ✅ FIX: अब Hindi text को escape नहीं करेगा, सिर्फ problematic emojis को handle करेगा
-        """
-        if not text: 
-            return ""
-        text = str(text)
-        
-        # Core common gaming emojis ko cleanly text icon me mapping
-        # ✅ Hindi text को safe रखते हैं
-        replacements = {
-            '🏆': '[Trophy]', 
-            '🌟': '[Star]', 
-            '✨': '[Sparkle]', 
-            '🔥': '[Fire]', 
-            '👑': '[Crown]',
-            '🎯': '[Target]', 
-            '⚡': '[Lightning]', 
-            '🎮': '[Game]', 
-            '🤖': '[Bot]', 
-            '📚': '[Books]',
-            '✅': '[Correct]', 
-            '❌': '[Wrong]', 
-            '🥇': '[1st]', 
-            '🥈': '[2nd]', 
-            '🥉': '[3rd]'
-        }
-        for emoji, rep in replacements.items():
-            text = text.replace(emoji, rep)
-            
-        # ✅ IMPROVED: सिर्फ high-plane Unicode characters को handle करो, Hindi को नहीं
-        # Devanagari range: U+0900 to U+097F (भारतीय भाषाएँ)
-        try:
-            # सिर्फ supplementary multilingual plane (U+10000+) को remove करो
-            high_points = re.compile(r'[\U00010000-\U0010ffff]', re.UNICODE)
-            text = high_points.sub('', text)  # Strip करो, replace नहीं
-        except Exception:
-            pass
-            
-        return text.strip()
-    
     def _build_footer(self, quiz_title: str, total_players: int) -> List:
-        """Footer block data wrapper"""
+        """Footer section"""
         styles = getSampleStyleSheet()
         footer_style = ParagraphStyle(
             'Footer', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#888888'), alignment=TA_CENTER, fontName=self.default_font
         )
         return [Paragraph(f"Report Summary: {total_players} participants", footer_style)]
 
-# Main globally exported convenience mapping wrapper
+# Main function
 def generate_quiz_pdf(
     chat_id: int, quiz_id: int, game_data: Dict, final_scores: Dict, negative_value: float = 0.0, db_file: str = "quiz_bot.db"
 ) -> Optional[BytesIO]:
