@@ -42,37 +42,55 @@ class QuizPDFGenerator:
             hindi_font_path = os.path.join(font_dir, "NotoSansDevanagari-Regular.ttf")
             hindi_bold_path = os.path.join(font_dir, "NotoSansDevanagari-Bold.ttf")
             
-            # Stable Raw GitHub links to avoid bad sfntVersion zip headers
+            # ✅ FIXED: सही GitHub raw content links for NotoSans Devanagari fonts
             if not os.path.exists(hindi_font_path):
-                self.logger.info("⏬ Downloading NotoSansDevanagari Font...")
-                urllib.request.urlretrieve(
-                    "https://github.com", 
-                    hindi_font_path
-                )
+                self.logger.info("⏬ Downloading NotoSansDevanagari-Regular Font...")
+                try:
+                    urllib.request.urlretrieve(
+                        "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansdevanagari/NotoSansDevanagari-Regular.ttf", 
+                        hindi_font_path
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Regular font download failed: {e}")
+                    
             if not os.path.exists(hindi_bold_path):
-                urllib.request.urlretrieve(
-                    "https://github.com", 
-                    hindi_bold_path
-                )
+                self.logger.info("⏬ Downloading NotoSansDevanagari-Bold Font...")
+                try:
+                    urllib.request.urlretrieve(
+                        "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansdevanagari/NotoSansDevanagari-Bold.ttf", 
+                        hindi_bold_path
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Bold font download failed: {e}")
 
             # Register standard TTF files inside ReportLab core
-            pdfmetrics.registerFont(TTFont('HindiFont', hindi_font_path))
-            pdfmetrics.registerFont(TTFont('HindiFont-Bold', hindi_bold_path))
-            
-            self.default_font = 'HindiFont'
-            self.default_font_bold = 'HindiFont-Bold'
+            if os.path.exists(hindi_font_path):
+                pdfmetrics.registerFont(TTFont('HindiFont', hindi_font_path))
+                self.default_font = 'HindiFont'
+                self.logger.info("✅ Regular Devanagari font registered")
+            else:
+                self.default_font = 'Helvetica'
+                self.logger.warning("⚠️ Regular font not available, using Helvetica fallback")
+                
+            if os.path.exists(hindi_bold_path):
+                pdfmetrics.registerFont(TTFont('HindiFont-Bold', hindi_bold_path))
+                self.default_font_bold = 'HindiFont-Bold'
+                self.logger.info("✅ Bold Devanagari font registered")
+            else:
+                self.default_font_bold = 'Helvetica-Bold'
+                self.logger.warning("⚠️ Bold font not available, using Helvetica fallback")
             
             # 🔥 GLOBAL OVERRIDE: Purane built-in styles ko target font se map karein
             styles = getSampleStyleSheet()
-            styles['Normal'].fontName = 'HindiFont'
-            styles['BodyText'].fontName = 'HindiFont'
-            styles['Heading1'].fontName = 'HindiFont-Bold'
-            styles['Heading2'].fontName = 'HindiFont-Bold'
-            styles['Heading3'].fontName = 'HindiFont-Bold'
+            styles['Normal'].fontName = self.default_font
+            styles['BodyText'].fontName = self.default_font
+            styles['Heading1'].fontName = self.default_font_bold
+            styles['Heading2'].fontName = self.default_font_bold
+            styles['Heading3'].fontName = self.default_font_bold
             self.logger.info("✅ Core styles patched with Devanagari engine")
                 
         except Exception as e:
-            self.logger.warning(f"Font download fail, activating Helvetica fallback: {e}")
+            self.logger.warning(f"Font registration error, activating Helvetica fallback: {e}")
             self.default_font = 'Helvetica'
             self.default_font_bold = 'Helvetica-Bold'
             
@@ -244,7 +262,7 @@ class QuizPDFGenerator:
             options_data = []
             for opt_idx, opt_text in enumerate(q_data["options"]):
                 is_correct = (opt_idx == q_data["correct_idx"])
-                mark = "[Correct]" if is_correct else "[Option]"
+                mark = "[✓ Correct]" if is_correct else "[Option]"
                 color = '#22c55e' if is_correct else '#666666'
                 
                 clean_opt = self._sanitize_text(opt_text)
@@ -270,27 +288,45 @@ class QuizPDFGenerator:
         """
         🔥 ADVANCED SAFE ENCODER: Emojis ko standard symbols me convert 
         karta hai aur Hindi ke standard parameters ko safe rakhta hai.
+        
+        ✅ FIX: अब Hindi text को escape नहीं करेगा, सिर्फ problematic emojis को handle करेगा
         """
-        if not text: return ""
+        if not text: 
+            return ""
         text = str(text)
         
         # Core common gaming emojis ko cleanly text icon me mapping
+        # ✅ Hindi text को safe रखते हैं
         replacements = {
-            '🏆': '[🏆]', '🌟': '[🌟]', '✨': '[✨]', '🔥': '[🔥]', '👑': '[👑]',
-            '🎯': '[🎯]', '⚡': '[⚡]', '🎮': '[🎮]', '🤖': '[🤖]', '📚': '[📚]',
-            '✅': '[Correct]', '❌': '[Wrong]', '🥇': '[1st]', '🥈': '[2nd]', '🥉': '[3rd]'
+            '🏆': '[Trophy]', 
+            '🌟': '[Star]', 
+            '✨': '[Sparkle]', 
+            '🔥': '[Fire]', 
+            '👑': '[Crown]',
+            '🎯': '[Target]', 
+            '⚡': '[Lightning]', 
+            '🎮': '[Game]', 
+            '🤖': '[Bot]', 
+            '📚': '[Books]',
+            '✅': '[Correct]', 
+            '❌': '[Wrong]', 
+            '🥇': '[1st]', 
+            '🥈': '[2nd]', 
+            '🥉': '[3rd]'
         }
         for emoji, rep in replacements.items():
             text = text.replace(emoji, rep)
             
-        # Baki bache hue high-plane custom special emojis ko drop hone se bachane ke liye strip filter
+        # ✅ IMPROVED: सिर्फ high-plane Unicode characters को handle करो, Hindi को नहीं
+        # Devanagari range: U+0900 to U+097F (भारतीय भाषाएँ)
         try:
+            # सिर्फ supplementary multilingual plane (U+10000+) को remove करो
             high_points = re.compile(r'[\U00010000-\U0010ffff]', re.UNICODE)
-            text = high_points.sub(r'[⭐]', text)
+            text = high_points.sub('', text)  # Strip करो, replace नहीं
         except Exception:
             pass
             
-        return text
+        return text.strip()
     
     def _build_footer(self, quiz_title: str, total_players: int) -> List:
         """Footer block data wrapper"""
@@ -306,4 +342,3 @@ def generate_quiz_pdf(
 ) -> Optional[BytesIO]:
     generator = QuizPDFGenerator(db_file=db_file)
     return generator.generate_quiz_report_pdf(chat_id, quiz_id, game_data, final_scores, negative_value)
-  
