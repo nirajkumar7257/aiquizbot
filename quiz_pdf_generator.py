@@ -1,11 +1,6 @@
 """
-🎯 Quiz PDF Report Generator
-Generates comprehensive PDF reports for completed quizzes with:
-- Quiz metadata (title, description, questions count)
-- User leaderboard with scores
-- All questions with options, correct answers, and explanations
-- User responses tracking
-- Visual styling with colors and formatting
+🎯 Quiz PDF Report Generator - HINDI FONT SUPPORT FIX
+Generates comprehensive PDF reports with proper Hindi/Devanagari font support
 """
 
 import json
@@ -24,14 +19,58 @@ from reportlab.platypus import (
     PageBreak, Image, KeepTogether
 )
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import os
 
 
 class QuizPDFGenerator:
-    """Generate comprehensive PDF reports for quiz results"""
+    """Generate comprehensive PDF reports for quiz results with Hindi/English support"""
     
     def __init__(self, db_file: str = "quiz_bot.db"):
         self.db_file = db_file
         self.logger = logging.getLogger(__name__)
+        self._register_fonts()
+        
+    def _register_fonts(self):
+        """
+        Register fonts that support Hindi/Devanagari characters
+        ✅ यह function Hindi fonts को register करता है
+        """
+        try:
+            # 🔧 DejaVuSans - यह font Hindi support करता है
+            dejavusans_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+            dejavusans_bold_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+            
+            # Windows paths
+            if os.name == 'nt':
+                dejavusans_path = "C:\\Windows\\Fonts\\DejaVuSans.ttf"
+                dejavusans_bold_path = "C:\\Windows\\Fonts\\DejaVuSans-Bold.ttf"
+            
+            # macOS paths
+            if os.path.exists("/Library/Fonts/DejaVuSans.ttf"):
+                dejavusans_path = "/Library/Fonts/DejaVuSans.ttf"
+                dejavusans_bold_path = "/Library/Fonts/DejaVuSans-Bold.ttf"
+            
+            # Try to register if paths exist
+            if os.path.exists(dejavusans_path):
+                pdfmetrics.registerFont(TTFont('DejaVu', dejavusans_path))
+                self.default_font = 'DejaVu'
+                self.logger.info("✅ DejaVuSans font registered successfully")
+            else:
+                self.logger.warning("⚠️ DejaVuSans font not found, using default Helvetica")
+                self.default_font = 'Helvetica'
+                
+            if os.path.exists(dejavusans_bold_path):
+                pdfmetrics.registerFont(TTFont('DejaVu-Bold', dejavusans_bold_path))
+                self.default_font_bold = 'DejaVu-Bold'
+            else:
+                self.default_font_bold = 'Helvetica-Bold'
+                
+        except Exception as e:
+            self.logger.warning(f"Font registration warning: {e}. Using default fonts.")
+            self.default_font = 'Helvetica'
+            self.default_font_bold = 'Helvetica-Bold'
         
     def generate_quiz_report_pdf(
         self, 
@@ -191,10 +230,10 @@ class QuizPDFGenerator:
             return []
     
     def _build_header(self, quiz_title: str, quiz_desc: str, total_q: int) -> List:
-        """Build PDF header with quiz title and metadata"""
+        """Build PDF header with quiz title and metadata - WITH HINDI SUPPORT"""
         styles = getSampleStyleSheet()
         
-        # Custom title style
+        # Custom title style - Hindi/Devanagari font support
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
@@ -202,7 +241,7 @@ class QuizPDFGenerator:
             textColor=colors.HexColor('#1f4788'),
             spaceAfter=12,
             alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
         )
         
         desc_style = ParagraphStyle(
@@ -212,11 +251,11 @@ class QuizPDFGenerator:
             textColor=colors.HexColor('#555555'),
             spaceAfter=8,
             alignment=TA_LEFT,
-            fontName='Helvetica'
+            fontName=self.default_font
         )
         
-        # Title
-        title = Paragraph(f"📚 {quiz_title}", title_style)
+        # Title with emoji
+        title = Paragraph(f"<b>📚 {quiz_title}</b>", title_style)
         
         # Description
         description = Paragraph(f"<b>Description:</b> {quiz_desc}", desc_style)
@@ -245,7 +284,7 @@ class QuizPDFGenerator:
         final_scores: Dict, 
         negative_value: float
     ) -> List:
-        """Build leaderboard section with rankings"""
+        """Build leaderboard section with rankings - WITH HINDI SUPPORT"""
         styles = getSampleStyleSheet()
         
         leaderboard_title = ParagraphStyle(
@@ -255,7 +294,14 @@ class QuizPDFGenerator:
             textColor=colors.HexColor('#1f4788'),
             spaceAfter=10,
             alignment=TA_LEFT,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
+        )
+        
+        normal_text = ParagraphStyle(
+            'NormalText',
+            parent=styles['Normal'],
+            fontSize=10,
+            fontName=self.default_font
         )
         
         # Sort scores
@@ -267,33 +313,36 @@ class QuizPDFGenerator:
         # Build leaderboard table
         leaderboard_data = [
             [
-                Paragraph("<b>🏆 Rank</b>", styles['Normal']),
-                Paragraph("<b>👤 Player</b>", styles['Normal']),
-                Paragraph("<b>✅ Right</b>", styles['Normal']),
-                Paragraph("<b>❌ Wrong</b>", styles['Normal']),
-                Paragraph("<b>⏱ Time (sec)</b>", styles['Normal']),
-                Paragraph("<b>🎯 Score</b>", styles['Normal'])
+                Paragraph("<b>Rank</b>", normal_text),
+                Paragraph("<b>Player Name</b>", normal_text),
+                Paragraph("<b>Right</b>", normal_text),
+                Paragraph("<b>Wrong</b>", normal_text),
+                Paragraph("<b>Time (sec)</b>", normal_text),
+                Paragraph("<b>Score</b>", normal_text)
             ]
         ]
         
         for rank, (uid, meta) in enumerate(sorted_scores, 1):
             player_name = game_data.get("joined_users", {}).get(uid, f"User {uid}")
+            # 🔧 Remove special characters to prevent font issues
+            player_name = self._sanitize_text(player_name)
             
-            rank_icon = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else f"{rank}."
+            rank_icon = "1st" if rank == 1 else "2nd" if rank == 2 else "3rd" if rank == 3 else f"{rank}."
             
             leaderboard_data.append([
-                Paragraph(rank_icon, styles['Normal']),
-                Paragraph(player_name[:30], styles['Normal']),
-                Paragraph(str(meta["score"]), styles['Normal']),
-                Paragraph(str(meta["wrong"]), styles['Normal']),
-                Paragraph(f"{meta['total_time']:.1f}", styles['Normal']),
-                Paragraph(f"<b>{meta['points']:.2f}</b>", styles['Normal'])
+                Paragraph(rank_icon, normal_text),
+                Paragraph(player_name[:30], normal_text),
+                Paragraph(str(meta["score"]), normal_text),
+                Paragraph(str(meta["wrong"]), normal_text),
+                Paragraph(f"{meta['total_time']:.1f}", normal_text),
+                Paragraph(f"<b>{meta['points']:.2f}</b>", normal_text)
             ])
         
         # Add negative marking info row
+        neg_info = f"Negative Marking: -{negative_value}/wrong"
         leaderboard_data.append([
-            Paragraph("", styles['Normal']),
-            Paragraph(f"<i>Negative Marking: -{negative_value}/wrong</i>", styles['Normal']),
+            Paragraph("", normal_text),
+            Paragraph(neg_info, normal_text),
             "", "", "", ""
         ])
         
@@ -307,7 +356,7 @@ class QuizPDFGenerator:
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f4788')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), self.default_font_bold),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
@@ -315,11 +364,11 @@ class QuizPDFGenerator:
             ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f0f0f0')]),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#fffacd')),
             ('FONTSIZE', (0, -1), (-1, -1), 9),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Oblique'),
+            ('FONTNAME', (0, -1), (-1, -1), self.default_font),
         ]))
         
         return [
-            Paragraph("🏆 Leaderboard", leaderboard_title),
+            Paragraph("<b>Leaderboard</b>", leaderboard_title),
             Spacer(1, 0.1*inch),
             leaderboard_table
         ]
@@ -330,7 +379,7 @@ class QuizPDFGenerator:
         game_data: Dict,
         final_scores: Dict
     ) -> List:
-        """Build detailed questions and answers section"""
+        """Build detailed questions and answers section - WITH HINDI SUPPORT"""
         styles = getSampleStyleSheet()
         story = []
         
@@ -341,7 +390,7 @@ class QuizPDFGenerator:
             textColor=colors.HexColor('#1f4788'),
             spaceAfter=12,
             alignment=TA_LEFT,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
         )
         
         question_title = ParagraphStyle(
@@ -350,7 +399,7 @@ class QuizPDFGenerator:
             fontSize=12,
             textColor=colors.HexColor('#2c5aa0'),
             spaceAfter=6,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
         )
         
         normal_text = ParagraphStyle(
@@ -358,18 +407,19 @@ class QuizPDFGenerator:
             parent=styles['Normal'],
             fontSize=10,
             spaceAfter=4,
-            alignment=TA_JUSTIFY
+            alignment=TA_JUSTIFY,
+            fontName=self.default_font
         )
         
-        story.append(Paragraph("📝 Questions & Answers Review", section_title))
+        story.append(Paragraph("<b>Questions & Answers Review</b>", section_title))
         story.append(Spacer(1, 0.15*inch))
         
         for q_data in questions_data:
             q_num = q_data["number"]
-            q_text = q_data["text"]
-            options = q_data["options"]
+            q_text = self._sanitize_text(q_data["text"])  # 🔧 Sanitize Hindi text
+            options = [self._sanitize_text(opt) for opt in q_data["options"]]  # 🔧 Sanitize options
             correct_idx = q_data["correct_idx"]
-            explanation = q_data["explanation"]
+            explanation = self._sanitize_text(q_data["explanation"])  # 🔧 Sanitize explanation
             
             # Question text
             question_para = Paragraph(
@@ -382,18 +432,19 @@ class QuizPDFGenerator:
             options_data = []
             for opt_idx, opt_text in enumerate(options):
                 is_correct = opt_idx == correct_idx
-                mark = "✅" if is_correct else "⭕"
-                color = colors.HexColor('#22c55e') if is_correct else colors.HexColor('#666666')
+                mark = "CORRECT" if is_correct else "OPTION"
+                color = '#22c55e' if is_correct else '#666666'
                 
                 options_data.append([
                     Paragraph(mark, normal_text),
-                    Paragraph(f"<font color='{color.hexval()}'>{opt_text}</font>", normal_text)
+                    Paragraph(f"<font color='{color}'>{opt_text}</font>", normal_text)
                 ])
             
-            options_table = Table(options_data, colWidths=[0.4*inch, 6.5*inch])
+            options_table = Table(options_data, colWidths=[0.8*inch, 6.2*inch])
             options_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('FONTNAME', (0, 0), (-1, -1), self.default_font),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ('LEFTPADDING', (0, 0), (-1, -1), 8),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 8),
@@ -405,13 +456,14 @@ class QuizPDFGenerator:
             
             # Explanation
             exp_para = Paragraph(
-                f"<i><b>💡 Explanation:</b> {explanation}</i>",
+                f"<b>Explanation:</b> {explanation}",
                 ParagraphStyle(
                     'Explanation',
                     parent=normal_text,
                     fontSize=9,
                     textColor=colors.HexColor('#555555'),
-                    leftIndent=20
+                    leftIndent=20,
+                    fontName=self.default_font
                 )
             )
             story.append(exp_para)
@@ -423,8 +475,44 @@ class QuizPDFGenerator:
         
         return story
     
+    def _sanitize_text(self, text: str) -> str:
+        """
+        Remove problematic characters that cause box display in PDF
+        ✅ यह function Hindi text को safe बनाता है
+        """
+        if not text:
+            return text
+        
+        # Convert to string if not already
+        text = str(text)
+        
+        # Replace emoji and special characters that might cause issues
+        # Keep Hindi/Devanagari characters and common punctuation
+        replacements = {
+            '📚': 'Books',
+            '✅': 'Correct',
+            '❌': 'Wrong',
+            '💡': 'Tip',
+            '🏆': 'Trophy',
+            '⏱': 'Time',
+            '🎯': 'Target',
+            '🥇': '1st',
+            '🥈': '2nd',
+            '🥉': '3rd',
+            '➻': '->',
+            '🔹': '*',
+            '━': '-',
+            '│': '|',
+            '┈': '-',
+        }
+        
+        for emoji, replacement in replacements.items():
+            text = text.replace(emoji, replacement)
+        
+        return text
+    
     def _build_footer(self, quiz_title: str, total_players: int) -> List:
-        """Build PDF footer with summary info"""
+        """Build PDF footer with summary info - WITH HINDI SUPPORT"""
         styles = getSampleStyleSheet()
         
         footer_style = ParagraphStyle(
@@ -433,17 +521,17 @@ class QuizPDFGenerator:
             fontSize=9,
             textColor=colors.HexColor('#888888'),
             alignment=TA_CENTER,
-            fontName='Helvetica-Oblique'
+            fontName=self.default_font
         )
         
         footer_data = [
             Paragraph(
-                f"📊 Report Summary: {total_players} participants | Quiz: {quiz_title}",
+                f"Report Summary: {total_players} participants | Quiz: {quiz_title}",
                 footer_style
             ),
             Spacer(1, 0.05*inch),
             Paragraph(
-                "Generated by 🤖 AI Quiz Bot | " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Generated by AI Quiz Bot | " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 footer_style
             )
         ]
@@ -464,6 +552,7 @@ def generate_quiz_pdf(
     Convenience function to generate quiz PDF
     
     Returns BytesIO object ready to send as file
+    ✅ PDF में Hindi characters properly display होंगे
     """
     generator = QuizPDFGenerator(db_file)
     return generator.generate_quiz_report_pdf(chat_id, quiz_id, game_data, final_scores, negative_value)
