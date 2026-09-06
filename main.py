@@ -22,6 +22,7 @@ from telegram.ext import (
 from telegram.error import NetworkError
 from telegram.request import HTTPXRequest
 from google import genai
+from quiz_pdf_generator import generate_quiz_pdf
 
 TIME_RE = re.compile(r'^\d{1,2}:\d{2}$')
 # Enable Logging
@@ -2862,6 +2863,13 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # 🎖️ result leaderboard 
 async def compile_group_leaderboard(chat_id, context):
+    """
+    Complete group leaderboard function with PDF report generation
+    
+    Args:
+        chat_id: Group chat ID where quiz was played
+        context: Bot context object
+    """
     try:
         game = GROUP_GAMES.get(chat_id)
         if not game:
@@ -2871,7 +2879,7 @@ async def compile_group_leaderboard(chat_id, context):
         
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        # Title ke sath negative_value column fetch ki
+        # Title के साथ negative_value column fetch की
         cursor.execute("SELECT title, negative_value FROM quizzes WHERE quiz_id = ?", (game["quiz_id"],))
         quiz_data = cursor.fetchone()
         quiz_title = quiz_data[0] if quiz_data else "Quiz"
@@ -2936,6 +2944,40 @@ async def compile_group_leaderboard(chat_id, context):
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
+        # ============================================
+        # 🆕 🔥 PDF GENERATION CODE - PDF report generate करो
+        # ============================================
+        try:
+            logging.info(f"📄 Generating PDF report for quiz {game['quiz_id']}...")
+            
+            pdf_buffer = generate_quiz_pdf(
+                chat_id=chat_id,
+                quiz_id=game["quiz_id"],
+                game_data=game,
+                final_scores=final_scores,
+                negative_value=db_neg_multiplier,
+                db_file=DB_FILE
+            )
+            
+            if pdf_buffer:
+                # PDF को file के रूप में भेजो
+                pdf_filename = f"quiz_report_{game['quiz_id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=pdf_buffer,
+                    filename=pdf_filename,
+                    caption="📄 *Complete Quiz Report*\n\n✅ Questions & Answers\n💡 Explanations\n🏆 Leaderboard",
+                    parse_mode="Markdown"
+                )
+                logging.info("✅ PDF report sent successfully!")
+            else:
+                logging.warning("⚠️ PDF generation returned None, skipping PDF send")
+                
+        except Exception as pdf_error:
+            logging.error(f"❌ Error generating/sending PDF: {pdf_error}", exc_info=True)
+        # ============================================
+        
         # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
@@ -2948,39 +2990,39 @@ async def compile_group_leaderboard(chat_id, context):
         
         # 🎭 डायलॉग्स पूल (बिना किसी फिक्स नाम के - रैंडमली इस्तेमाल के लिए)
         roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
-            "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरुजी!",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो?",
+            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित हुआ!",
+            "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरु जी!",
+            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो गए?",
             "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें!",
-            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सब भूल गए!",
+            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सब को भी दे देते!",
         ]
         
         roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
-            "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लगता है सब भूल गए!",
-            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून मिला। बीच में ऐसे लटके हो!",
-            "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्ते दिखाते हैं!",
+            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नंबर भी ठीक होते।",
+            "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लगता है खुद को भूल गए!",
+            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून मिला। बीच में ऐसे लटके हो जैसे झूले में।",
+            "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्तेदारों को बुलाते हैं।",
             "[मिस कॉल] नंबर तो ठीक-ठाक आ गए, पर किस्मत ने आखिरी वक्त पर वैसे ही कट कर दिया!",
         ]
         
         roasts_low = [
-            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
-            "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक अध्ययन भी जरूरी है!",
+            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देख कर चिंता हुई।",
+            "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक भी होना चाहिए!",
             "[आंसू की बूंद] नंबर देखकर सच में आंखों में आंसू आ गए। यह नंबर है या शगुन का संकेत?",
-            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए तो क्या करें?",
-            "[मिस्टर गुमनाम] नाम के आगे टैग लगाने से नंबर नहीं मिलते बाबूजी, इसके लिए पढ़ाई चाहिए!",
-            "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ दूसरों के सही जवाबों पर तालियाँ बजाने आए थे!",
-            "[अंगूठा छाप] स्क्रीन पर उँगलियाँ तो ऐसे चल रही थीं जैसे हैकर हो, पर मार्क्स कहाँ से आएंगे?",
-            "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला उतनी ही धूप है!",
-            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
+            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाएगा भाई!",
+            "[मिस्टर गुमनाम] नाम के आगे टैग लगाने से नंबर नहीं मिलते बाबूजी, इसके लिए पढ़ाई करनी पड़ती है।",
+            "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ दूसरों के सही जवाबों पर तालियाँ बजाने आए हो।",
+            "[अंगूठा छाप] स्क्रीन पर उँगलियाँ तो ऐसे चल रही थीं जैसे हैकर हो, पर मार्कशीट में कुछ नहीं!",
+            "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला उतनी ही गर्मी लगी।",
+            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप की फ्लॉपी मिलेगी!",
         ]
         
         roasts_minus = [
-            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
-            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
+            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हो!",
+            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा ध्यान दें।",
             "[दिवालिया] भाई साहब, आपका स्कोर देखकर बैंक वाले भी लोन देने से मना कर देंगे!",
-            "[दानवीर कर्ण] अपने सारे नंबर गलत जवाबों के रास्ते परीक्षक को दान कर आए। इसी को कहते हैं दान!",
-            "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्क की सुंदरता!",
+            "[दानवीर कर्ण] अपने सारे नंबर गलत जवाबों के रास्ते परीक्षक को दान कर आए। इतनी दानवीरता की जरूरत नहीं!",
+            "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्किंग का अखाड़ा है यह!",
         ]
 
         leaderboard = ""
@@ -3025,14 +3067,14 @@ async def compile_group_leaderboard(chat_id, context):
         footer = "\n🏆 Congratulations to all participants!"
         full_message = header + subheader + leaderboard + footer
         
-        # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
+        # 🌟 FIX: Library wrapper को bypass करके raw dictionary payload भेजा
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         
         # Raw structure format dictionary injection
         raw_button = {
             "text": "Start Again ✨",
             "url": share_url,
-            "style": "success"  # Hara (Green) rang lagane ke liye. Neela chahiye toh "primary" likhein
+            "style": "success"  # Hara (Green) rang lagane के लिए
         }
         
         # InlineKeyboardMarkup constructor manually object structures feed kar lega
@@ -3045,6 +3087,7 @@ async def compile_group_leaderboard(chat_id, context):
             parse_mode="HTML"
         )
         GROUP_GAMES.pop(chat_id, None)
+        
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}")
                  
