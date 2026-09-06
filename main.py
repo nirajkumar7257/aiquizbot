@@ -417,40 +417,31 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.message.chat_id
     chat_type = update.message.chat.type
     
-    try:
-        env_owner_id = int(os.environ.get("OWNER_ID", 0))
-        env_group_id = int(os.environ.get("SUPPORT_GROUP_ID", 0))
-    except (ValueError, TypeError):
-        env_owner_id = env_group_id = 0
-        
-    # ✅ .env से सभी अलाउड यूज़र्स की लिस्ट निकालना
-    allowed_ids_str = os.environ.get("ALLOWED_USER_IDS", "")
-    allowed_ids = [int(x.strip()) for x in allowed_ids_str.split(",") if x.strip().isdigit()]
+    allowed_ids = get_allowed_ids()
     
     # ग्रुप सुरक्षा जाँच
     if chat_type in ["group", "supergroup"]:
-        # चेक करें कि क्या यह सही सपोर्ट ग्रुप है
-        if chat_id != env_group_id:
+        # चेक करें कि क्या सही सपोर्ट ग्रुप आईडी मैच हो रही है
+        if SUPPORT_GROUP_ID and chat_id != SUPPORT_GROUP_ID:
             await update.message.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
             return ConversationHandler.END
             
-        # ✅ चेक करें कि क्या ग्रुप में कमांड चलाने वाला व्यक्ति बॉट ओनर या 4 अलाउड यूज़र्स में से कोई एक है
-        if user_id != env_owner_id and user_id not in allowed_ids:
+        # चेक करें कि यूज़र ओनर या उन 4 अलाउड यूज़र्स में से है या नहीं
+        if user_id != OWNER_ID and user_id not in allowed_ids:
             await update.message.reply_text("❌ <b>Sorry!</b> Group me yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
             return ConversationHandler.END
 
-    # बॉट DM (Private Chat) में कोई भी चला सकता है
+    # बॉट DM (Private Chat) में कोई भी आम यूज़र चला सकता है
     context.user_data.clear()
     
-    # Selective Keyboard 1: Topic Selection
     reply_keyboard = [['Current Affairs 2026 📰']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
     await update.message.reply_text(
         "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "<blockquote>or skip button par click kare and apna koi bhi topic type karke bheje.</blockquote>\n"
-        "<i>(Example: Ancient History, Modern History, Hindi, Geography...)</i>",
+        "<blockquote>or skip button par click kare ya apna koi bhi topic type karke bheje.</blockquote>\n"
+        "(Example: Ancient History, Modern History, Hindi, Geography...)",
         parse_mode="HTML",
         reply_markup=markup
     )
