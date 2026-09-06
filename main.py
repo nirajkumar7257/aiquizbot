@@ -412,7 +412,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "👉 Niche diye gaye button par click kare ya apna koi bhi topic type karke bheje.\n"
+        "<blockquote>or skip button par click kare and apna koi bhi topic type karke bheje.</blockquote>\n"
         "<i>(Example: Ancient History, Modern History, Hindi, Geography...)</i>",
         parse_mode="HTML",
         reply_markup=markup
