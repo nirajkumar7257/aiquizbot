@@ -2708,7 +2708,7 @@ async def send_next_group_poll(chat_id, context):
 
         # Send poll with retry
         poll_msg = None
-        max_retries = 3
+        max_retries = 2
         raw_timer = timer if timer >= 10 else 10
         
         for attempt in range(max_retries):
@@ -2788,7 +2788,7 @@ async def send_next_group_poll(chat_id, context):
         
         if not answers_received:
             game["consecutive_no_answers"] += 1
-            if game["consecutive_no_answers"] >= 500:
+            if game["consecutive_no_answers"] >= 2:
                 game["quiz_paused"] = True
                 pause_msg = f"🔐 Quiz paused - nobody answering"
                 keyboard = [
