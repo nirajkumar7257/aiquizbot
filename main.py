@@ -568,7 +568,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # 🎬 स्टेप 1: शुरुआती लोडिंग मैसेज (0 सेकंड)
     generating_msg = await update.message.reply_text(
         "<b>🚀 AI Quiz Generator</b>\n\n"
-        "⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
+        "CNM⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
         "🔎 Researching your topic...\n"
         "⏳ 2s elapsed",
         parse_mode="HTML",
@@ -581,11 +581,13 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             generate_bulk_questions_ai, topic, count, lang, difficulty, options_cnt
         ))
         
-        # --- ⏳ लाइव 3-3 सेकंड का फुल-होल्ड एनिमेशन लूप ---
+        # --- ⏳ लाइव 3-3 सेकंड का डिलीट + न्यू मैसेज लूप ---
         try:
             # स्टेप 2: 3 सेकंड का होल्ड
             await asyncio.sleep(3)
-            await generating_msg.edit_text(
+            try: await generating_msg.delete()
+            except: pass
+            generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
                 "🧠 Crafting questions...\n"
@@ -595,7 +597,9 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 
             # स्टेप 3: और 3 सेकंड का होल्ड (कुल 6 सेकंड)
             await asyncio.sleep(3)
-            await generating_msg.edit_text(
+            try: await generating_msg.delete()
+            except: pass
+            generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n"
                 "✍️ Writing options...\n"
@@ -605,7 +609,9 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 
             # स्टेप 4: और 3 सेकंड का होल्ड (कुल 9 सेकंड)
             await asyncio.sleep(3)
-            await generating_msg.edit_text(
+            try: await generating_msg.delete()
+            except: pass
+            generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n"
                 "✅ Verifying answers...\n"
@@ -613,36 +619,37 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 parse_mode="HTML"
             )
             
-        except Exception as edit_err:
-            logging.warning(f"Animation hold loop alert: {edit_err}")
+        except Exception as msg_err:
+            logging.warning(f"Animation message sequence alert: {msg_err}")
 
-        # ⚡ AI का फाइनल रिजल्ट आने तक रुकें। 
-        # अगर AI 12 सेकंड से ज़्यादा समय लेता है, तो बॉट ऊपर वाले Step 4 पर ही होल्ड रहेगा!
+        # ⚡ AI का फाइनल रिजल्ट आने तक रुकें (अगर ज़्यादा टाइम लेगा तो स्टेप 4 स्क्रीन पर दिखेगा)
         ai_questions = await task
         
         # ❌ फेलियर हैंडलिंग
         if not ai_questions or len(ai_questions) == 0:
-            try:
-                await generating_msg.edit_text(
-                    "❌ <b>AI Quiz Generator Error</b>\n\n"
-                    "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                await update.message.reply_text("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
+            try: await generating_msg.delete()
+            except: pass
+            await update.message.reply_text(
+                "❌ <b>AI Quiz Generator Error</b>\n\n"
+                "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare",
+                parse_mode="HTML"
+            )
             context.user_data.clear()
             return ConversationHandler.END
             
         # 🎉 स्टेप 5: सफलतापूर्वक जनरेट होने पर फाइनल ग्रीन स्टेटस (Done)
         try:
-            await generating_msg.edit_text(
+            try: await generating_msg.delete()
+            except: pass
+            generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "💯 Done generated...\n\n"
                 "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
                 parse_mode="HTML"
             )
             await asyncio.sleep(1.5) # यूज़र को ग्रीन बार देखने का समय दें
-            await generating_msg.delete()
+            try: await generating_msg.delete()
+            except: pass
         except Exception:
             pass
         
@@ -697,10 +704,11 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
     except Exception as e:
         logging.error(f"Error in handle_time_limit: {e}")
+        try: await generating_msg.delete()
+        except: pass
         await update.message.reply_text("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
         context.user_data.clear()
         return ConversationHandler.END
-
 
 # Final Summary aur Quiz Generation Confirmation
 async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
