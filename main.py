@@ -570,7 +570,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         "<b>🚀 AI Quiz Generator</b>\n\n"
         "CNM⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
         "🔎 Researching your topic...\n"
-        "⏳ 2s elapsed",
+        "⏳ please wait...",
         parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove(selective=True)
     )
@@ -591,31 +591,31 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
                 "🧠 Crafting questions...\n"
-                "⏳ 5s elapsed",
+                "⏳ please wait...",
                 parse_mode="HTML"
             )
                 
             # स्टेप 3: और 3 सेकंड का होल्ड (कुल 6 सेकंड)
-            await asyncio.sleep(3)
+            await asyncio.sleep(4)
             try: await generating_msg.delete()
             except: pass
             generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n"
                 "✍️ Writing options...\n"
-                "⏳ 8s elapsed",
+                "⏳ please wait...",
                 parse_mode="HTML"
             )
                 
             # स्टेप 4: और 3 सेकंड का होल्ड (कुल 9 सेकंड)
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
             try: await generating_msg.delete()
             except: pass
             generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
                 "🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n"
                 "✅ Verifying answers...\n"
-                "⏳ 11s elapsed",
+                "⏳ please wait...",
                 parse_mode="HTML"
             )
             
@@ -647,7 +647,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
                 parse_mode="HTML"
             )
-            await asyncio.sleep(1.5) # यूज़र को ग्रीन बार देखने का समय दें
+            await asyncio.sleep(4) # यूज़र को ग्रीन बार देखने का समय दें
             try: await generating_msg.delete()
             except: pass
         except Exception:
