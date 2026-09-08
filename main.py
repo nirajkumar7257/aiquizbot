@@ -554,20 +554,17 @@ async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYP
     return TIME_LIMIT
 
 async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # 🔒 सुरक्षा जाँच (Owner + 4 Allowed Users Check)
     if not is_authorized(update): 
         return TIME_LIMIT
     
     context.user_data['time_limit'] = int(update.message.text.split()[0])
     
-    # AI QUESTIONS GENERATE करो
     topic = context.user_data.get('topic', 'General Knowledge')
     count = context.user_data.get('q_count', 5)
     lang = context.user_data.get('language', 'English')
     difficulty = context.user_data.get('difficulty', 'Medium')
     options_cnt = context.user_data.get('options_count', 4)
     
-    # 🎬 स्टेप 1: शुरुआती लोडिंग मैसेज दिखाएं
     generating_msg = await update.message.reply_text(
         "<b>1. 🚀 AI Quiz Generator</b>\n\n"
         "⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
@@ -578,67 +575,74 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
     
     try:
-        # बैकग्राउंड में AI जनरेशन टास्क को शुरू करें ताकि लाइव मैसेज एडिट हो सके
         task = asyncio.create_task(asyncio.to_thread(
             generate_bulk_questions_ai, topic, count, lang, difficulty, options_cnt
         ))
         
-        # --- ⏳ लाइव एनिमेटेड प्रोग्रेस बार स्टेप्स ---
-        
-        # स्टेप 2: (Total 6s)
-        await asyncio.sleep(4)
-        if not task.done():
-            await generating_msg.edit_text(
-                "<b>2. 🚀 AI Quiz Generator</b>\n\n"
-                "🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
-                "🧠 Crafting questions...\n"
-                "⏳ 6s elapsed",
-                parse_mode="HTML"
-            )
-            
-        # स्टेप 3: (Total 11s)
-        await asyncio.sleep(5)
-        if not task.done():
-            await generating_msg.edit_text(
-                "<b>3. 🚀 AI Quiz Generator</b>\n\n"
-                "🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n"
-                "✍️ Writing options...\n"
-                "⏳ 11s elapsed",
-                parse_mode="HTML"
-            )
-            
-        # Schritt 4: (Total 15s)
-        await asyncio.sleep(4)
-        if not task.done():
-            await generating_msg.edit_text(
-                "<b>4. 🚀 AI Quiz Generator</b>\n\n"
-                "🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n"
-                "✅ Verifying answers...\n"
-                "⏳ 15s elapsed",
-                parse_mode="HTML"
-            )
-            
-        # बैकग्राउंड में चल रहे AI कार्य का परिणाम लें
+        # --- ⏳ सेफ लाइव एनिमेटेड प्रोग्रेस बार स्टेप्स ---
+        try:
+            # स्टेप 2:
+            await asyncio.sleep(4)
+            if not task.done():
+                await generating_msg.edit_text(
+                    "<b>2. 🚀 AI Quiz Generator</b>\n\n"
+                    "🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
+                    "🧠 Crafting questions...\n"
+                    "⏳ 6s elapsed",
+                    parse_mode="HTML"
+                )
+                
+            # स्टेप 3:
+            await asyncio.sleep(4)
+            if not task.done():
+                await generating_msg.edit_text(
+                    "<b>3. 🚀 AI Quiz Generator</b>\n\n"
+                    "🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n"
+                    "✍️ Writing options...\n"
+                    "⏳ 10s elapsed",
+                    parse_mode="HTML"
+                )
+                
+            # स्टेप 4:
+            await asyncio.sleep(4)
+            if not task.done():
+                await generating_msg.edit_text(
+                    "<b>4. 🚀 AI Quiz Generator</b>\n\n"
+                    "🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n"
+                    "✅ Verifying answers...\n"
+                    "⏳ 14s elapsed",
+                    parse_mode="HTML"
+                )
+        except Exception as edit_err:
+            logging.warning(f"Animation edit skipped: {edit_err}")
+
+        # AI का फाइनल रिजल्ट आने तक रुकें
         ai_questions = await task
         
-        # ❌ AI क्विज़ फेल होने या 10 से कम सवाल होने पर वॉर्निंग देकर प्रोसेस कैंसिल करें
         if not ai_questions or len(ai_questions) == 0:
-            await generating_msg.edit_text(
-                "❌ <b>AI Quiz Generator Error</b>\n\n"
-                "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare",
-                parse_mode="HTML"
-            )
+            try:
+                await generating_msg.edit_text(
+                    "❌ <b>AI Quiz Generator Error</b>\n\n"
+                    "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                await update.message.reply_text("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
             context.user_data.clear()
             return ConversationHandler.END
             
-        # 🎉 स्टेप 5: सफलतापूर्वक जनरेट होने पर फाइनल ग्रीन स्टेटस दिखाएं
-        await generating_msg.edit_text(
-            "<b>🚀 AI Quiz Generator</b>\n\n"
-            "💯 Done generated...\n\n"
-            "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
-            parse_mode="HTML"
-        )
-        await asyncio.sleep(1.5) # यूज़र को ग्रीन बार देखने का समय दें
+        # ✅ स्टेप 5: सफलतापूर्वक जनरेट होने पर फाइनल ग्रीन स्टेटस
+        try:
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n"
+                "💯 Done generated...\n\n"
+                "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
+                parse_mode="HTML"
+            )
+            await asyncio.sleep(1.5)
+            await generating_msg.delete()
+        except Exception:
+            pass
         
         # FORMAT QUESTIONS PROPERLY
         formatted_questions = []
@@ -647,30 +651,25 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             options = q.get("options", [])
             
             if not isinstance(correct_idx, int):
-                try:
-                    correct_idx = int(correct_idx)
-                except (ValueError, TypeError):
-                    correct_idx = 0
+                try: correct_idx = int(correct_idx)
+                except: correct_idx = 0
             
             if correct_idx < 0 or correct_idx >= len(options):
                 correct_idx = 0
-                logging.warning(f"Invalid correct_idx {q.get('correct')}, using 0")
             
             formatted_questions.append({
                 "text": q.get("question", ""),
                 "options": options,
-                "correct": correct_idx,  # 🟢 INTEGER INDEX
+                "correct": correct_idx,
                 "explanation": q.get("explanation", ""),
                 "pre_message": ""
             })
         
-        # ✅ माँगे गए सवाल से कम सवाल मिलने पर अलर्ट टेक्स्ट तैयार करें
         actual_count = len(formatted_questions)
         alert_text = ""
         if actual_count < count:
             alert_text = f"\n\n⚠️ <b>नोट:</b> आपने {count} सवाल माँगे थे, लेकिन AI ने कुल <b>{actual_count}</b> सवाल ही जनरेट किए हैं।"
         
-        # CONTEXT MEIN STORE KARO
         context.user_data["ai_questions"] = formatted_questions
         context.user_data["quiz_build"] = {
             "title": context.user_data.get("title", "AI Quiz"),
@@ -680,25 +679,12 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         }
         context.user_data["quiz_build_creator_id"] = update.message.from_user.id
         
-        # लोडिंग मैसेज को परमानेंट डिलीट करें ताकि ग्रुप साफ़ रहे
-        await generating_msg.delete()
-        
-        # NEGATIVE MARKING BUTTONS DIKHA
         neg_keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"),
-                InlineKeyboardButton("📉 1/4th (-0.25)", callback_data="neg_0.25")
-            ],
-            [
-                InlineKeyboardButton("📉 Half (-0.5)", callback_data="neg_0.5"),
-                InlineKeyboardButton("📉 Single (-1.0)", callback_data="neg_1.0")
-            ],
-            [
-                InlineKeyboardButton("📉 Heavy (-1.5)", callback_data="neg_1.5")
-            ]
+            [InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"), InlineKeyboardButton("📉 1/4th (-0.25)", callback_data="neg_0.25")],
+            [InlineKeyboardButton("📉 Half (-0.5)", callback_data="neg_0.5"), InlineKeyboardButton("📉 Single (-1.0)", callback_data="neg_1.0")],
+            [InlineKeyboardButton("📉 Heavy (-1.5)", callback_data="neg_1.5")]
         ])
         
-        # अलर्ट टेक्स्ट (यदि है) को यहाँ जोड़कर ओनर/अलाउड यूज़र को भेजें
         await update.message.reply_text(
             f"🛑 <b>Select Negative Marking Schema:</b>{alert_text}\n\n"
             "Aap is quiz ke liye kitni negative marking set karna chahte hain?",
@@ -709,15 +695,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
     except Exception as e:
         logging.error(f"Error in handle_time_limit: {e}")
-        try:
-            await generating_msg.delete()
-        except Exception:
-            pass
-        # क्रैश होने पर भी सुरक्षा वॉर्निंग देकर डेटा साफ़ करें
-        await update.message.reply_text(
-            "aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare",
-            parse_mode="HTML"
-        )
+        await update.message.reply_text("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
         context.user_data.clear()
         return ConversationHandler.END
 
