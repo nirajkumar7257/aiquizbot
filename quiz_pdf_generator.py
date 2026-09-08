@@ -197,7 +197,7 @@ class QuizPDFGenerator:
         
         leaderboard_table = Table(leaderboard_data, colWidths=[0.8*inch, 2.4*inch, 0.8*inch, 0.8*inch, 1.1*inch, 1.1*inch])
         leaderboard_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2e1065')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#fffacd')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -2), 1, colors.black),
