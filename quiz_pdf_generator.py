@@ -197,7 +197,7 @@ class QuizPDFGenerator:
         
         leaderboard_table = Table(leaderboard_data, colWidths=[0.8*inch, 2.4*inch, 0.8*inch, 0.8*inch, 1.1*inch, 1.1*inch])
         leaderboard_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f4788')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2e1065')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -2), 1, colors.black),
@@ -237,7 +237,7 @@ class QuizPDFGenerator:
 
 # ग्लोबल इंटीग्रेशन फ़ंक्शन (bot_username पैरामीटर के साथ)
 def generate_quiz_pdf(
-    chat_id: int, quiz_id: int, game_data: Dict, final_scores: Dict, negative_value: float = 0.0, bot_username: str = "@MyQuizBot", db_file: str = "quiz_bot.db"
+    chat_id: int, quiz_id: int, game_data: Dict, final_scores: Dict, negative_value: float = 0.0, bot_username: str = "@Di_Quiz_bot", db_file: str = "quiz_bot.db"
 ) -> Optional[BytesIO]:
     generator = QuizPDFGenerator(db_file=db_file)
     return generator.generate_quiz_report_pdf(chat_id, quiz_id, game_data, final_scores, negative_value, bot_username)
